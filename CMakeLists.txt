@@ -133,14 +133,15 @@ if($ENV{ROS_VERSION} MATCHES "2")
 
     find_package(ament_cmake REQUIRED)
     find_package(sensor_msgs REQUIRED)
-    find_package(std_msgs REQUIRED)  
+    find_package(std_msgs REQUIRED)
     find_package(rcutils REQUIRED)
     find_package(rcl_interfaces REQUIRED)
     find_package(rclcpp_action REQUIRED)
-    find_package(rosidl_typesupport_c REQUIRED) 
+    find_package(rosidl_typesupport_c REQUIRED)
     find_package(rosidl_default_generators REQUIRED)
     find_package(builtin_interfaces REQUIRED)
     find_package(std_msgs REQUIRED)
+    find_package(autoware_point_types REQUIRED)
     
     rosidl_generate_interfaces(${PROJECT_NAME}
       "msg/msg_ros2/UdpPacket.msg"
@@ -255,14 +256,15 @@ endif($ENV{ROS_VERSION} MATCHES "1")
 if($ENV{ROS_VERSION} MATCHES "2")
   find_package(ament_index_cpp REQUIRED)
   if(COMMAND ament_target_dependencies)
-    ament_target_dependencies(hesai_ros_driver_node 
+    ament_target_dependencies(hesai_ros_driver_node
     "ament_index_cpp"
     "rcl_interfaces"
-    "rclcpp" 
+    "rclcpp"
     "rcutils"
-    "std_msgs" 
+    "std_msgs"
     "sensor_msgs"
     "rclcpp_action"
+    "autoware_point_types"
     # "tf2_geometry_msgs"
     )
   else()
@@ -274,6 +276,7 @@ if($ENV{ROS_VERSION} MATCHES "2")
       std_msgs
       sensor_msgs
       rclcpp_action
+      autoware_point_types
     )
     foreach(dependency IN LISTS ROS2_TARGET_DEPENDENCIES)
       if(DEFINED ${dependency}_TARGETS AND NOT "${${dependency}_TARGETS}" STREQUAL "")
