@@ -285,8 +285,6 @@ inline sensor_msgs::msg::PointCloud2 SourceDriver::ToRosMsg(const LidarDecodedFr
   offset = addPointField(ros_msg, "time_stamp", 1, sensor_msgs::msg::PointField::UINT32,  offset);
 
   ros_msg.point_step = offset;
-  ros_msg.row_step = ros_msg.width * ros_msg.point_step;
-  ros_msg.is_dense = false;
   ros_msg.data.resize(points_number * ros_msg.point_step, 0);
 
   struct AutowarePoint {
@@ -307,10 +305,17 @@ inline sensor_msgs::msg::PointCloud2 SourceDriver::ToRosMsg(const LidarDecodedFr
     default:   return_type = autoware::point_types::ReturnType::INVALID; break;
   }
 
-  static constexpr float kDegToRad = static_cast<float>(M_PI / 180.0);
+  uint32_t valid_points_number = 0;
+  constexpr float kDegToRad = static_cast<float>(M_PI / 180.0);
   for (size_t i = 0; i < points_number; i++) {
     const LidarPointXYZIRTAED& p = pPoints[i];
-    AutowarePoint* out = reinterpret_cast<AutowarePoint*>(ros_msg.data.data() + i * ros_msg.point_step);
+    if (!(p.distance > 0.0f) ||
+        !std::isfinite(p.x) ||
+        !std::isfinite(p.y) || 
+        !std::isfinite(p.z)) {
+      continue;
+    }
+    AutowarePoint* out = reinterpret_cast<AutowarePoint*>(ros_msg.data.data() + valid_points_number * ros_msg.point_step);
     out->x = p.x;
     out->y = p.y;
     out->z = p.z;
@@ -322,9 +327,14 @@ inline sensor_msgs::msg::PointCloud2 SourceDriver::ToRosMsg(const LidarDecodedFr
     out->distance = p.distance;
     const double dt = p.timestamp - frame_start_timestamp;
     out->time_stamp  = static_cast<uint32_t>(dt > 0.0 ? dt * 1e9 : 0.0);
+    valid_points_number++;
   }
+  ros_msg.width = valid_points_number;
+  ros_msg.row_step = ros_msg.width * ros_msg.point_step;
+  ros_msg.is_dense = true;
+  ros_msg.data.resize(valid_points_number * ros_msg.point_step);
 
-  printf("%s frame:%d points:%u packet:%d start time:%lf end time:%lf\n", prefix, frame_index, points_number, packet_number, frame_start_timestamp, frame_end_timestamp);
+  printf("%s frame:%d points:%u (raw %u) packet:%d start time:%lf end time:%lf\n", prefix, frame_index, valid_points_number, points_number, packet_number, frame_start_timestamp, frame_end_timestamp);
   std::cout.flush();
   auto sec = (uint64_t)floor(frame_start_timestamp);
   if (sec <= std::numeric_limits<int32_t>::max()) {
